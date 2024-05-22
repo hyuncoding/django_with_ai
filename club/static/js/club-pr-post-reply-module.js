@@ -1,45 +1,46 @@
-const activityReplyService = (() => {
-    const write = async (activityReply) => {
-        const response = await fetch(`/activity/replies/api/`, {
+const clubPostRelyService = (() => {
+    const write = async (clubPostReply) => {
+        const response = await fetch("/clubs/pr-post-reply/api/", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json;charset=utf-8',
                 'X-CSRFToken': csrf_token
             },
-            body: JSON.stringify(activityReply)
+            body: JSON.stringify(clubPostReply)
         });
-        return await response.json()
-    };
-
-    const getList = async (isAdd, page, activityId, callback) => {
-        const response = await fetch(`/activity/replies/api/?page=${page}&activity-id=${activityId}`);
-        const replies = await response.json();
-        if (callback) {
-            callback(isAdd, replies);
-        }
+        return response.json()
     }
 
-    const update = async (activityReply) => {
-        const response = await fetch(`/activity/replies/api/`, {
+    const getList = async (clubPostId, page, callback) => {
+        const response = await fetch(`/clubs/pr-post-reply/api/?club_post_id=${clubPostId}&page=${page}`);
+        const replies_info = await response.json();
+        if (callback){
+            return callback(replies_info);
+        }
+
+        return replies_info;
+    }
+
+    const update = async (clubPostReply) => {
+        const response = await fetch(`/clubs/pr-post-reply/api/`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json;charset=utf-8',
                 'X-CSRFToken': csrf_token
             },
-            body: JSON.stringify(activityReply)
+            body: JSON.stringify(clubPostReply)
         });
-        return await response.json()
+        return response.json()
     }
 
     const remove = async (id) => {
-        await fetch(`/activity/replies/api/`, {
+        await fetch(`/clubs/pr-post-reply/api/?id=${id}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json;charset=utf-8',
                 'X-CSRFToken': csrf_token
-            },
-            body: JSON.stringify(id)
-        });
+            }
+        })
     }
 
     const report = async (replyInfo) => {
