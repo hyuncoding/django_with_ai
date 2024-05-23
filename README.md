@@ -482,3 +482,10 @@
 
 ![mainpage_activity_ai](https://github.com/hyuncoding/django_with_ai/assets/134760674/495edc8e-7a23-4a15-9c0d-dd9bb8a60fa2)
 
+#### 🖥️ 로그인 시 화면 (회원별 맞춤 모델 사용)
+
+![mainpage_activity_login_ai](https://github.com/hyuncoding/django_with_ai/assets/134760674/8f03e3d3-2b09-4734-b5f8-0e1427862f2c)
+
+### 7. 트러블슈팅 및 느낀 점
+
+
