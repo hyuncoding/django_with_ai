@@ -19,10 +19,11 @@
    1) 모임 데이터
    2) 활동 데이터
 3. 데이터 전처리
-4. 모델 학습
-5. 모델 평가
-6. Django 프로젝트 상용화 화면
-7. 트러블슈팅 및 느낀 점
+4. 사전 모델 학습
+5. 사전 모델 평가
+6. 회원별 모델 추가 학습
+7. Django 프로젝트 상용화
+8. 트러블슈팅 및 느낀 점
 
 ---
 
@@ -448,7 +449,7 @@
 
 ![main_df](https://github.com/hyuncoding/django_with_ai/assets/134760674/c849fc53-e193-47d0-bfbe-a7ee18b50772)
 
-### 4. 모델 학습
+### 4. 사전 모델 학습
 
 > `scikit-learn` 라이브러리를 활용하여 진행합니다.  
 > `CountVectorizer()`을 통해 벡터로 변환된 feature를 `MultinomialNB()` 분류 모델에 전달하여 타겟을 예측합니다.  
@@ -505,7 +506,7 @@
 
   </details>
 
-### 5. 모델 평가
+### 5. 사전 모델 평가
 
 > 앞서 정의한 평가 함수를 통해, 테스트 데이터(`X_test`)에 대한 예측을 진행한 후 평가합니다.  
 > 평가 지표는 정확도(accuracy), 정밀도(precision), 재현율(recall), f1-score 등이며, 오차 행렬을 시각화합니다.  
@@ -538,18 +539,160 @@
 
   </details>
 
-### 6. Django 프로젝트 상용화 화면
+### 6. 회원별 모델 추가 학습
 
-> 메인페이지의 'AI 추천 활동' 탭에서 표시합니다.  
+> 회원가입 시 자동으로 회원별 활동 추천 모델을 생성합니다.  
+> 해당 모델은 먼저 사전 훈련 모델을 기준으로 복사되며,  
+> 회원이 1) 활동 상세페이지 접속 시, 2) 관심 활동 등록 시 추가 학습을 진행합니다.  
+
+- 활동 상세페이지 이동 및 관심 활동 등록 시 모두, 같은 방식으로 추가 학습을 진행합니다.
+- 해당 활동의 카테고리 이름과 활동 제목, 활동 소개 및 활동 장소를 하나의 문장으로 합친 후,  
+  불러온 파이프라인 모델의 `CountVectorizer()`에 전달하여 벡터화합니다.  
+- 벡터화된 값을 파이프라인 모델의 `MultinomialNB()`에 전달하여 `partial_fit()`을 통해 추가 학습을 진행합니다.
+- 이때 정답 라벨(y)은 해당 활동의 카테고리 id로 설정합니다.
+  
+- 활동 상세 페이지에 대한 get 요청에 응답하는 Django View인 ActivityDetailWebView의 get() 메소드 중, 추가 학습 관련 코드입니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        # 활동 상세페이지는 기획 상 로그인한 유저만 조회할 수 있으므로 세션에서 사용자의 id를 받아와 저장합니다.
+        member_id = request.session['member']['id']
+        member = Member.enabled_objects.get(id=member_id)
+
+        # 회원에 맞는 활동 추천 ai 모델을 불러옵니다.
+        model_file_name = member.member_recommended_activity_model
+
+        # path
+        model_file_path = os.path.join(Path(__file__).resolve().parent.parent, model_file_name)
+
+        # pkl 파일을 열어 객체 로드
+        model = joblib.load(model_file_path)
+
+        # 불러온 ai 모델에 추가 fit을 진행합니다.
+        additional_X_train = [activity.category.category_name + activity.activity_title + activity.activity_intro + activity.activity_address_location]
+        additional_y_train = [activity.category.id]
+
+        additional_X_train_transformed = model.named_steps['count_v'].transform(additional_X_train)
+        model.named_steps['mnnb'].partial_fit(additional_X_train_transformed, additional_y_train, classes=[i for i in range(1, 14)])
+
+        # fit이 완료된 모델을 다시 같은 경로에 같은 이름으로 내보내줍니다.
+        joblib.dump(model, member.member_recommended_activity_model)
+
+  </details>
+
+- 관심 활동 추가에 대한 REST 방식 get 요청에 응답하는 Django View인 ActivityLikeAPI의 get() 메소드 중, 추가 학습 관련 부분입니다.
+  
+- <details>
+    <summary>Click to see full code</summary>
+
+        member = Member.enabled_objects.get(id=member_id)
+        activity = Activity.enabled_objects.get(id=activity_id)
+
+        # 회원에 맞는 활동 추천 ai 모델을 불러옵니다.
+        model_file_name = member.member_recommended_activity_model
+
+        # path
+        model_file_path = os.path.join(Path(__file__).resolve().parent.parent, model_file_name)
+
+        # pkl 파일을 열어 객체 로드
+        model = joblib.load(model_file_path)
+
+        # 불러온 ai 모델에 추가 fit을 진행합니다.
+        additional_X_train = [
+            activity.category.category_name + activity.activity_title + activity.activity_intro + activity.activity_address_location]
+        additional_y_train = [activity.category.id]
+
+        additional_X_train_transformed = model.named_steps['count_v'].transform(additional_X_train)
+        model.named_steps['mnnb'].partial_fit(additional_X_train_transformed, additional_y_train,
+                                              classes=[i for i in range(1, 14)])
+
+        # fit이 완료된 모델을 다시 같은 경로에 같은 이름으로 내보내줍니다.
+        joblib.dump(model, member.member_recommended_activity_model)
+  
+  </details>
+
+### 7. Django 프로젝트 상용화
+
+> 메인페이지의 'AI 추천 활동' 탭에서 표시합니다.
+
+- 로그아웃 시 현재 시즌에 맞게 기획한 키워드로 예측을 수행합니다.  
+- 이때 키워드는 **여행 바다 산 여름 시원한**으로 설정하였습니다.
+- 예측된 확률에 따라 상위 2개 카테고리에 대하여, 1위 카테고리의 활동 중 최신순으로 6개를 불러옵니다.
+- 마찬가지로 2위 카테고리의 활동 중 최신순으로 2개를 불러옵니다.
 
 #### 🖥️ 로그아웃 시 화면 (사전 훈련 모델 사용)
 
 ![mainpage_activity_ai](https://github.com/hyuncoding/django_with_ai/assets/134760674/495edc8e-7a23-4a15-9c0d-dd9bb8a60fa2)
 
+- 로그인 시 회원별 모델로 예측을 수행합니다.
+- 이때 입력값은 마이페이지에서 선택한 '관심 분야'의 카테고리 이름들과,  
+  마이페이지에서 입력한 '관심 키워드' 3개로 설정하였습니다.
+- 마찬가지로 예측된 확률에 따라 상위 2개 카테고리에 대하여 총 8개의 활동을 불러와 표시합니다.
+- 아래는 마이페이지의 '관심 분야' 및 '관심 키워드' 선택/입력 화면입니다.
+
+![mypage_interests](https://github.com/hyuncoding/django_with_ai/assets/134760674/e32d5ce6-8db6-4f35-b43c-4e7c1bf71e9d)
+
 #### 🖥️ 로그인 시 화면 (회원별 맞춤 모델 사용)
 
 ![mainpage_activity_login_ai](https://github.com/hyuncoding/django_with_ai/assets/134760674/8f03e3d3-2b09-4734-b5f8-0e1427862f2c)
 
-### 7. 트러블슈팅 및 느낀 점
+### 8. 트러블슈팅 및 느낀 점
+
+#### 1) `.pkl` 모델 파일 입출력 경로 관련
+
+가. 문제 발생
+
+- `.pkl`파일을 Django의 View에서 불러오는 과정에서 경로 문제가 발생하였습니다.
+- 메인 페이지 접속 시 REST 방식으로 받은 추천 활동 리스트 요청에 대해 응답하는 View에서는, 같은 app 폴더 안의 `.pkl` 파일을 불러오는 데 문제가 없었습니다.
+- 하지만, 활동 상세 페이지 View나 관심 활동 등록 View의 경우 다른 app 폴더 안에 위치하므로,  
+  `.pkl` 파일을 불러오지 못했습니다.
+
+나 원인 추론
+
+- `os.path.join()`과 `Path(__file__).resolve().parent` 등의 코드를 작성하며 절대 경로를 잘못 입력한 것으로 예상 후 직접 출력하며 확인해보았으나,  
+  `joblib.load()`에 해당 경로를 전달하기 직전에 출력해보았을 때에도 정상적으로 출력되어 다른 원인이 있을 것으로 예상했습니다.
+- `joblib.load()`에 경로를 전달하기 직전과, 실제 오류 메시지에서 존재하지 않는 파일 메시지와 함께 출력된 경로에 차이가 존재하였으며,  
+  전자와 달리 후자에서는 `/upload/` 경로가 포함되어 있었습니다.
+- 회원별 모델 파일의 경로를 저장하는 회원 테이블의 컬럼인 `member_recommended_activity_model` 컬럼이  
+  회원 모델 클래스에서 `ImageField()` 타입의 필드로 선언되어 있기 때문으로 파악하였습니다.
+
+다. 해결 방안
+
+- 해당 컬럼의 타입을 변경하기 위해, `member/models.py`에서 `Member` 클래스의 해당 필드를 `TextField()` 타입으로 변경하였습니다.
+- 이후 다시 `migration`을 진행하여 데이터베이스에 반영하였습니다.
+
+라. 결과 확인
+
+- 정상적으로 회원별 모델을 저장된 경로에 맞게 불러옴을 확인하였습니다.
+
+#### 2) `.pkl` 모델 추가 학습 진행 관련
+
+가. 문제 발생
+
+- 회원별 `.pkl` 모델 파일을 불러오는 데까지는 문제가 없었으나,  
+  추가 학습을 진행할 때 `partial_fit()` 메소드가 파이프라인 객체에서 동작하지 않았습니다.
+
+나. 원인 추론
+
+- 인터넷 검색 및 scikit-learn의 공식 Documentation을 확인한 결과, 파이프라인 모델에 포함된 `CountVectorizer()`의 경우,  
+  입력 데이터에 대해 토큰화 및 피처 벡터화를 한 번에 수행하도록 설계되어 `partial_fit()`을 지원하지 않기 때문으로 판단하였습니다.
+
+다. 해결 방안
+
+- 파이프라인 객체의 `named_steps` 를 통해 `CountVectorizer()`와 `MultiNomialNB()`를 각각 가져와 사용하였습니다.
+- 이때, `CountVectorizer()`에는 `fit_transform()`이 아닌 `transform()`을 통해 새로운 feature 데이터를 전달하였으며,  
+  `MultiNomialNB()`에는 앞서 변환된 feature 데이터를 전달하여 `partial_fit()`으로 추가 학습을 진행하였습니다.
+
+라. 결과 확인
+
+- 활동 상세 페이지 이동 시 및 관심 활동 등록 시 정상적으로 추가 학습이 진행됨을 확인하였습니다.
+
+#### 3) 느낀 점
+
+- 데이터 분석부터 RFM 분석, 머신러닝의 분류(Classification)와 회귀(Regression)를 배우고 다양한 모델을 통해 실습 및 프로젝트를 진행하면서, 다양한 주제의 데이터를 다루어보았지만 실무에서 어떻게 활용할 수 있을지 정확히 알지 못했습니다. 하지만 이번 프로젝트를 통해 데이터로 직접 학습시킨 모델을 실제 웹 서비스에 상용화하며 모델 훈련의 방향성을 직접 정하는 경험을 할 수 있었습니다.
+- 또한, 사전 훈련 모델의 예측 결과와 회원별로 추가 학습된 모델의 예측 결과가 실시간으로 달라지는 양상을 확인하며, 모델이 실제로 어떻게 동작하는지, 그리고 회원 맞춤형 추천 시스템이 어떤 방식으로 구축될 수 있는지에 대해 알게 되어 흥미로웠습니다.
+- 테스트 데이터에 대한 모델의 정확도가 만족스럽지 않더라도, 회원별 모델이 추가 학습을 거듭함에 따라 회원이 설정한 관심 분야 및 키워드와 관련된 활동을 점점 정확히 예측하는 모습을 보며, 학습/테스트용 사전 데이터에서의 평가 지표만을 신뢰할 수는 없다는 사실을 깨달았습니다. 결국 사전 훈련 모델은 회원별 맞춤 모델을 위한 준비 작업이기 때문에, 평가 지표들에 대해 적절한 합의점을 찾아 실제 예측에서의 성능을 향상시키기 위한 노력이 중요하다는 것 또한 깨달았습니다.
+
 
 
