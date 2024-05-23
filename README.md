@@ -450,9 +450,9 @@
 
 ### 4. 모델 학습
 
-> `scikit-learn` 라이브러리를 활용하여 진행합니다.
-> `CountVectorizer()`을 통해 벡터로 변환된 feature를 `MultinomialNB()` 분류 모델에 전달하여 타겟을 예측합니다.
-> `Pipeline()`을 통해 파이프라인을 구축하여 진행합니다.
+> `scikit-learn` 라이브러리를 활용하여 진행합니다.  
+> `CountVectorizer()`을 통해 벡터로 변환된 feature를 `MultinomialNB()` 분류 모델에 전달하여 타겟을 예측합니다.  
+> `Pipeline()`을 통해 파이프라인을 구축하여 진행합니다.  
 
 - <details>
     <summary>Click to see full code</summary>
@@ -507,8 +507,8 @@
 
 ### 5. 모델 평가
 
-> 앞서 정의한 평가 함수를 통해, 테스트 데이터(`X_test`)에 대한 예측을 진행한 후 평가합니다.
-> 평가 지표는 정확도(accuracy), 정밀도(precision), 재현율(recall), f1-score 등이며, 오차 행렬을 시각화합니다.
+> 앞서 정의한 평가 함수를 통해, 테스트 데이터(`X_test`)에 대한 예측을 진행한 후 평가합니다.  
+> 평가 지표는 정확도(accuracy), 정밀도(precision), 재현율(recall), f1-score 등이며, 오차 행렬을 시각화합니다.  
 
 - <details>
     <summary>Click to see full code</summary>
@@ -540,7 +540,7 @@
 
 ### 6. Django 프로젝트 상용화 화면
 
-> 메인페이지의 'AI 추천 활동' 탭에서 표시합니다.
+> 메인페이지의 'AI 추천 활동' 탭에서 표시합니다.  
 
 #### 🖥️ 로그아웃 시 화면 (사전 훈련 모델 사용)
 
