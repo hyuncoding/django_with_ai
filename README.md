@@ -15,17 +15,20 @@
 1. 데이터 수집
    1) 모임 데이터
    2) 활동 데이터
-2. 데이터 탐색 및 전처리
-3. 모델 학습
-4. 모델 평가
-5. Django 프로젝트 상용화 화면
-6. 트러블슈팅 및 느낀 점
+2. 데이터 탐색 및 정제
+   1) 모임 데이터
+   2) 활동 데이터
+3. 데이터 전처리
+4. 모델 학습
+5. 모델 평가
+6. Django 프로젝트 상용화 화면
+7. 트러블슈팅 및 느낀 점
 
 ---
 
 ### 1. 데이터 수집
 
-##### 1) 모임 데이터
+#### 1) 모임 데이터
 
 -   데이터 수집 사이트: https://m.blog.naver.com/so_moim?tab=1
 -   `selenium` 라이브러리를 통한 크롤링으로 데이터를 수집하였습니다.
@@ -40,95 +43,21 @@
           from webdriver_manager.chrome import ChromeDriverManager
           import csv
           import time
-          from tqdm import tqdm
+   </details>
 
-          with open('scraped_data2.csv', 'w', newline='', encoding='utf-8-sig') as file:
-              writer = csv.writer(file, quoting=csv.QUOTE_NONE)  # CSV 파일에 쓰기 위한 writer 객체 생성
-              writer.writerow(['club_title'])  # CSV 헤더 작성
-              # ChromeDriver 설정
-              service = Service(ChromeDriverManager().install())
-              options = Options()
-              options.add_argument('--headless')  # 브라우저를 백그라운드에서 실행
-              driver = webdriver.Chrome(service=service, options=options)
+![club_original_data_csv](https://github.com/hyuncoding/django_with_ai/assets/134760674/a269c261-2624-479d-9ae0-3db8bb9501dd)
 
-              # 웹사이트 열기
-              driver.get("https://m.blog.naver.com/so_moim?tab=1")
-
-              # 잠시 대기
-              driver.implicitly_wait(10)
-
-              # 페이지 끝까지 스크롤 다운하여 콘텐츠 로드
-              SCROLL_PAUSE_TIME = 2
-
-              last_height = driver.execute_script("return document.body.scrollHeight")
-
-              title_set = set()
-
-              for i in tqdm(range(50)):
-                  # 페이지 끝까지 스크롤 다운
-                  driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-
-                  # 새로운 콘텐츠가 로드될 때까지 대기
-                  time.sleep(SCROLL_PAUSE_TIME)
-
-                  # 새로운 스크롤 높이 계산
-                  new_height = driver.execute_script("return document.body.scrollHeight")
-
-                  # 더 이상 새로운 콘텐츠가 없으면 루프 종료
-                  if new_height == last_height:
-                      break
-
-                  last_height = new_height
-
-              # 제목 텍스트들 찾기
-              titles = driver.find_elements(By.CSS_SELECTOR, ".title__UUn4H span")
-
-              # 제목 텍스트 전처리 후 writer로 파일에 출력
-              for title in tqdm(titles):
-                  title = title.text
-                  if "<" in title and ">" in title:
-                      title = title.split("<")[-1]
-                      if title[-1] != ">":
-                          target_idx = title.index(">")
-                          title = title[:target_idx]
-                      else:
-                          title = title[:-1]
-                  else:
-                      continue
-                  title = title.replace('"', "")
-                  title = title.replace(',', '')
-                  if title not in title_set:
-                      writer.writerow([title])
-                      title_set.add(title)
-
-              # 브라우저 종료
-              driver.quit()
-
-</details>
-
--   크롤링을 통해 추출한 데이터를 csv로 내보낸 결과는 아래와 같습니다.
-
-- <details>
-    <summary>Click to see full code</summary>
-
-        import pandas as pd
-
-        c_df = pd.read_csv('./datasets/scraped_data2.csv')
-        c_df
-
-</details>
-
-![club_original_data_csv](https://github.com/hyuncoding/django_with_ai/assets/134760674/6c3180f0-8b5d-4908-bab5-d793995683eb)
-
-##### 2) 활동 데이터
+#### 2) 활동 데이터
 
 - 데이터 수집 사이트
-    - https://www.ppomppu.co.kr/zboard/zboard.php?id=experience
-    - https://kmong.com/category/24001
-    - https://www.frip.co.kr/category/beauty/all?page=2
-    - https://meta-chehumdan.com/campaign_list.php?category_id=001A
+   - https://www.ppomppu.co.kr/zboard/zboard.php?id=experience
+   - https://kmong.com/category/24001
+   - https://www.frip.co.kr/category/beauty/all?page=2
+   - https://meta-chehumdan.com/campaign_list.php?category_id=001A
 
-### 2. 데이터 탐색 및 전처리
+### 2. 데이터 탐색 및 정제
+
+#### 1) 모임 데이터
 
 - 크롤링으로 수집한 모임 이름(club_title) 데이터에 대해, 데이터베이스의 컬럼명과 일치할 수 있도록 컬럼명을 바꿔주었습니다.
 
@@ -278,5 +207,181 @@
   </details>
 
 ![club_category](https://github.com/hyuncoding/django_with_ai/assets/134760674/6cf6e333-05f9-4a0f-a504-e05203cd05ec)
+
+#### 2) 활동 데이터
+
+- 크롤링으로 수집한 활동 데이터에 대해, 카테고리에 맞는 카테고리id를 직접 입력해주었습니다.
+- 또한 '활동 내용(activity_content)'과 '활동 소개(activity_intro)'를 제목에 맞게 입력해주었습니다.
+  
+![activity_original_data_csv](https://github.com/hyuncoding/django_with_ai/assets/134760674/c49d607e-5e79-4e70-aa89-51b6a79f05c0)
+
+- 활동 개설 시, 원래대로라면 결제id가 필요하므로 이미 존재하는 결제 데이터의 id를 랜덤으로 넣어주었습니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+      pay_ids = [i for i in range(1, 75)]
+      def get_club_id_by_random(category_id):
+          club_ids = club_df.loc[club_df['club_main_category_id'] == category_id, 'id']
+          club_id = random.sample(sorted(club_ids), 1)[0]
+          return club_id
+      
+      a_df['pay_id'] = 0
+      a_df['pay_id'] = a_df['pay_id'].apply(lambda x: random.sample(pay_ids, 1)[0])
+      a_df
+
+  </details>
+
+![activity_with_payid](https://github.com/hyuncoding/django_with_ai/assets/134760674/1e4fd550-cf22-4494-b834-ce0af4ab4209)
+
+- 이후 활동의 카테고리와 일치하는 대표 카테고리를 가진 모임의 id를 랜덤으로 넣어주었습니다.
+- '상태(status)'는 1(True)로 입력하였습니다.
+- '활동 썸네일(thumbnail_path)'과 '활동 배너(banner_path)'는 공백(' ')으로 입력하였습니다.
+- '활동 장소(activity_address_location)'는 개설한 모임의 장소를 입력한 후, 활동 제목이나 내용에 제목이 있을 경우 비교하여 일치하도록 조정하였습니다.
+- '활동 장소 설명(activity_address_detail)'은 임의로 '주차 공간 없습니다.'로 입력하였습니다.
+- '생성일(created_date)'과 '수정일(updated_date)'은 모임 데이터와 동일한 방식으로 입력하였으며,  
+  '모집 시작일(recruit_start)'과 '모집 종료일(recruit_end)', '활동 시작일(activity_start)' 및 '활동 종료일(activity_end)' 또한
+  같은 방식으로 입력하였습니다.
+  
+- <details>
+    <summary>Click to see full code</summary>
+
+      a_df['club_id'] = a_df['category_id'].apply(lambda x: get_club_id_by_random(x))
+      a_df['status'] = 1
+      a_df['thumbnail_path'] = ' '
+      a_df['banner_path'] = ' '
+      a_df['activity_address_detail'] = '주차 공간 없습니다.'
+  
+      # 현재 시간 및 범위 설정
+      now = datetime(2024, 5, 19, 4, 23)
+      start = datetime(2024, 1, 1, 12, 0)
+      
+      # 'created_date'와 'updated_date' 컬럼 생성
+      created_dates = [random_date(start, now) for _ in range(len(a_df))]
+      updated_dates = [random_date(created_date, now) for created_date in created_dates]
+      recruit_starts = [random_date(created_date, now) for created_date in created_dates]
+      recruit_ends = [random_date(recruit_start, now) for recruit_start in recruit_starts]
+      activity_starts = [random_date(recruit_end, now) for recruit_end in recruit_ends]
+      activity_ends = [random_date(activity_start, now) for activity_start in activity_starts]
+      
+      
+      a_df['created_date'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in created_dates]
+      a_df['updated_date'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in updated_dates]
+      a_df['recruit_start'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in recruit_starts]
+      a_df['recruit_end'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in recruit_ends]
+      a_df['activity_start'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in activity_starts]
+      a_df['activity_end'] = [date.strftime('%Y-%m-%d %H:%M:%S') for date in activity_ends]
+      a_df.to_csv('./datasets/activity_lists.csv', index=False)
+
+  </details>
+
+### 3. 데이터 전처리
+
+- 데이터베이스로부터 전체 활동 데이터를 csv파일로 내보낸 후, `Jupyter Notebook` 환경에서 `pandas` 라이브러리를 통해 불러옵니다.
+  
+- <details>
+    <summary>Click to see full code</summary>
+
+        import pandas as pd
+
+        a_df = pd.read_csv('./datasets/tbl_activity.csv', low_memory=False)
+        a_df
+    
+  </details>
+
+![tbl_activity](https://github.com/hyuncoding/django_with_ai/assets/134760674/7d696285-0780-45f9-a82f-d4529f0a7ca4)
+
+- 모델 학습 대상 컬럼들을 추출하여 새로운 데이터프레임으로 구성합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        pre_a_df = a_df[['activity_title', 'activity_content', 'activity_intro', 'activity_address_location', 'category_id']]
+        pre_a_df
+
+  </details>
+
+![pre_a_df](https://github.com/hyuncoding/django_with_ai/assets/134760674/028925d5-d6a7-4b52-be57-63cc5590cd5d)
+
+- 'category_id(활동 카테고리의 id)'를 예측 타겟으로, 나머지 컬럼을 feature로 설정하였습니다.
+- 크롤링을 통해 수집한 데이터가 아닌 원래 데이터의 경우, `summernote` API를 통해 작성한 내용이 포함되어 있으므로,  
+  `<p></p>`와 같은 html 태그들이 존재하였습니다.
+- 따라서 정규표현식을 사용하여 해당 부분을 빈 문자열로 대체합니다.
+  
+- <details>
+    <summary>Click to see full code</summary>
+
+        import re
+        def remove_html_tags(text):
+            # 정규표현식을 사용하여 HTML 태그를 찾습니다.
+            clean = re.compile('<.*?>')
+            # 태그를 빈 문자열로 대체합니다.
+            return re.sub(clean, '', text)
+
+        pre_a_df.activity_content = pre_a_df.activity_content.apply(remove_html_tags)
+
+  </details>
+
+- 또한 `"`(큰따옴표)를 제거합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        pre_a_df.activity_content = pre_a_df.activity_content.apply(lambda x: x.replace("\"", ""))
+
+  </details>
+
+![replaced_pre_a_df](https://github.com/hyuncoding/django_with_ai/assets/134760674/8525d4cd-c72c-4969-bb94-2c1b2c0957d1)
+
+- feature로 설정한 4개의 컬럼을 하나의 문장으로 합친 후, 'feature' 컬럼을 만들고 저장합니다.
+  
+- <details>
+    <summary>Click to see full code</summary>
+
+        def get_full_feature(df):
+            result = []
+            columns = df.columns[:-1]
+            for i in range(len(df)):
+                text = ''
+                for column in columns:
+                    now = df.iloc[i][column]
+                    if str(now) == 'nan' or not now:
+                        continue
+                    text += str(now) + ' '
+                result.append(text)
+            return result
+                
+        result = get_full_feature(pre_a_df)
+        pre_a_df['feature'] = result
+
+  </details>
+
+![combined_features](https://github.com/hyuncoding/django_with_ai/assets/134760674/18c009e8-7743-47d7-a9a4-f3d7408685c9)
+
+- 결합한 문장에서, 숫자, 알파벳 및 한글을 제외한 특수문자를 제거합니다.
+- 제거한 feature와 target(category_id)로 구성된 새로운 데이터프레임을 생성합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        def remove_special_characters_except_spaces(text):
+            """
+            주어진 텍스트에서 숫자, 한글, 영어 알파벳을 제외한 모든 특수문자 및 기호를 제거하고,
+            공백은 유지합니다.
+        
+            :param text: 특수문자 및 기호를 포함한 문자열
+            :return: 특수문자 및 기호가 제거된 문자열 (공백 유지)
+            """
+            # 정규표현식을 사용하여 숫자, 한글, 영어 알파벳, 공백을 제외한 모든 문자를 찾습니다.
+            clean = re.compile('[^0-9a-zA-Zㄱ-ㅎ가-힣ㅏ-ㅣ ]')
+            # 특수문자 및 기호를 빈 문자열로 대체합니다.
+            return re.sub(clean, ' ', text)
+
+        pre_a_df.feature = pre_a_df.feature.apply(remove_special_characters_except_spaces)
+        main_df = pre_a_df[['feature', 'category_id']]
+  
+  </details>
+
+![main_df](https://github.com/hyuncoding/django_with_ai/assets/134760674/c849fc53-e193-47d0-bfbe-a7ee18b50772)
 
 
