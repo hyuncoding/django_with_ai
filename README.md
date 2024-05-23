@@ -384,4 +384,101 @@
 
 ![main_df](https://github.com/hyuncoding/django_with_ai/assets/134760674/c849fc53-e193-47d0-bfbe-a7ee18b50772)
 
+### 4. 모델 학습
+
+> `scikit-learn` 라이브러리를 활용하여 진행합니다.
+> `CountVectorizer()`을 통해 벡터로 변환된 feature를 `MultinomialNB()` 분류 모델에 전달하여 타겟을 예측합니다.
+> `Pipeline()`을 통해 파이프라인을 구축하여 진행합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        from sklearn.model_selection import train_test_split
+        from sklearn.feature_extraction.text import CountVectorizer
+        from sklearn.naive_bayes import MultinomialNB
+        from sklearn.pipeline import Pipeline
+        
+        count_v = CountVectorizer()
+        
+        pipe = Pipeline([('count_v', count_v), ('mnnb', MultinomialNB())])
+        
+        features, targets = main_df['feature'], main_df['category_id']
+        
+        X_train, X_test, y_train, y_test = train_test_split(features, targets, stratify=targets, test_size=0.2, random_state=124)
+        
+        pipe.fit(X_train, y_train)
+
+  </details>
+
+- 학습한 모델을 평가하기 위한 함수를 정의합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        import matplotlib.pyplot as plt
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, ConfusionMatrixDisplay
+        
+        def get_evaluation(y_test, prediction, classifier=None, X_test=None):
+            confusion = confusion_matrix(y_test, prediction)
+            accuracy = accuracy_score(y_test , prediction)
+            precision = precision_score(y_test , prediction, average='macro')
+            recall = recall_score(y_test , prediction, average='macro')
+            f1 = f1_score(y_test, prediction, average='macro')
+            
+            print('오차 행렬')
+            print(confusion)
+            print('정확도: {0:.4f}, 정밀도: {1:.4f}, 재현율: {2:.4f}, F1: {3:.4f}'.format(accuracy, precision, recall, f1))
+            print("#" * 80)
+            
+            if classifier is not None and  X_test is not None:
+                fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12,4))
+                titles_options = [("Confusion matrix", None), ("Normalized confusion matrix", "true")]
+        
+                for (title, normalize), ax in zip(titles_options, axes.flatten()):
+                    disp = ConfusionMatrixDisplay.from_estimator(classifier, X_test, y_test, ax=ax, cmap=plt.cm.Blues, normalize=normalize)
+                    disp.ax_.set_title(title)
+                plt.show()
+
+  </details>
+
+### 5. 모델 평가
+
+> 앞서 정의한 평가 함수를 통해, 테스트 데이터(`X_test`)에 대한 예측을 진행한 후 평가합니다.
+> 평가 지표는 정확도(accuracy), 정밀도(precision), 재현율(recall), f1-score 등이며, 오차 행렬을 시각화합니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        prediction = pipe.predict(X_test)
+        get_evaluation(y_test, prediction, pipe, X_test)
+
+  </details>
+
+![confusion_matrix](https://github.com/hyuncoding/django_with_ai/assets/134760674/5dbeb6d4-4920-47b3-9c73-b2b607e89cdf)
+
+- 정확도가 약 0.5991, f1-score가 약 0.4817로 저조했지만, 카테고리(타겟)별 분포 비중이 고르지 않기 때문으로 예상되었습니다.
+
+![category_value_counts](https://github.com/hyuncoding/django_with_ai/assets/134760674/1e776966-9b8f-4b4d-a923-7b475327b01e)
+
+- 실제로 데이터 개수가 많은 1번 및 3번 카테고리의 경우 정규화된 오차 행렬을 보았을 때 약 0.87과 0.91로, 매우 높은 정확도를 보이고 있음을 알 수 있습니다.
+- 따라서 사전 훈련 모델을 활용하여 회원별 개인 모델을 생성한 후 추가 학습을 진행하였을 때 높은 성능을 기대할 수 있을 것으로 판단됩니다.
+- 해당 모델을 `joblib` 라이브러리를 통해 `.pkl`파일로 내보냅니다.
+
+- <details>
+    <summary>Click to see full code</summary>
+
+        import pickle
+        import joblib
+        
+        joblib.dump(pipe, './activity_recommender.pkl')
+
+  </details>
+
+### 6. Django 프로젝트 상용화 화면
+
+> 메인페이지의 'AI 추천 활동' 탭에서 표시합니다.
+
+#### 🖥️ 로그아웃 시 화면 (사전 훈련 모델 사용)
+
+![mainpage_activity_ai](https://github.com/hyuncoding/django_with_ai/assets/134760674/495edc8e-7a23-4a15-9c0d-dd9bb8a60fa2)
 
