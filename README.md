@@ -16,13 +16,16 @@
 2. 데이터 탐색 및 전처리
 3. 모델 학습
 4. 모델 평가
+5. Django 프로젝트 상용화 화면
+6. 트러블슈팅 및 느낀 점
 
 ---
 
 ### 1. 데이터 수집
 
+-   데이터 수집 사이트: https://m.blog.naver.com/so_moim?tab=1
 -   `selenium` 라이브러리를 통한 크롤링으로 데이터를 수집하였습니다.
-
+-   크롤링 목적은 '활동' 데이터 수집에 앞서, 각 활동을 개설한 '모임' 데이터 수집을 위한 모임 이름 더미 데이터 수집입니다.
 -   <details>
     <summary>Click to see full code</summary>
 
@@ -74,9 +77,9 @@
                   last_height = new_height
 
               # 제목 텍스트들 찾기
-              titles = driver.find_elements(By.CSS_SELECTOR, ".title__UUn4H span")  # "title-class-name"을 실제 클래스 이름으로 변경
+              titles = driver.find_elements(By.CSS_SELECTOR, ".title__UUn4H span")
 
-              # 제목 텍스트 출력
+              # 제목 텍스트 전처리 후 writer로 파일에 출력
               for title in tqdm(titles):
                   title = title.text
                   if "<" in title and ">" in title:
@@ -98,3 +101,17 @@
               driver.quit()
 
 </details>
+
+-   크롤링을 통해 추출한 데이터를 csv로 내보낸 결과는 아래와 같습니다.
+
+<details>
+    <summary>Click to see full code</summary>
+
+        import pandas as pd
+
+        c_df = pd.read_csv('./datasets/scraped_data2.csv')
+        c_df
+
+</details>
+
+<img src="">
